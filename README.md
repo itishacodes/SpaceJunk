@@ -2,7 +2,7 @@
 
 Every object ever launched into the void. An interactive digital galaxy canvas where anyone can draw, name, and archive their custom cosmic debris permanently in real-time.
 
-🔗 **Live Project Link:** [Click here to explore the Galaxy](YOUR_LIVE_GITHUB_PAGES_LINK_HERE)
+🔗 **Live Project Link:** [Click here to explore the Galaxy](https://itishacodes.github.io/SpaceJunk/)
 
 ---
 
