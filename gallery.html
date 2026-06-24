@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Space Junk — Gallery</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #05060F;
+  --surface: #0D0F1E;
+  --surface2: #131629;
+  --violet: #C8ADFF;
+  --amber: #FFB347;
+  --text: #E8E6F0;
+  --muted: #6B6880;
+  --border: rgba(200,173,255,0.15);
+}
+html, body {
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+/* starfield fixed behind everything */
+#starfield { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+
+/* page content above stars */
+.page { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 0 24px 80px; }
+
+/* header */
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 26px 0 40px;
+  border-bottom: 0.5px solid var(--border);
+  margin-bottom: 40px;
+}
+.logo { display: flex; flex-direction: column; gap: 3px; }
+.logo-title { font-size: 17px; font-weight: 600; letter-spacing: -0.02em; }
+.logo-sub { font-size: 10px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; }
+.nav-link {
+  font-size: 12px; color: var(--muted); text-decoration: none;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  border: 0.5px solid var(--border); border-radius: 20px;
+  padding: 6px 14px; transition: all 0.15s;
+}
+.nav-link:hover { color: var(--text); border-color: rgba(200,173,255,0.3); }
+
+/* hero text */
+.hero { margin-bottom: 48px; }
+.hero h1 {
+  font-size: clamp(28px, 5vw, 48px);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  margin-bottom: 10px;
+}
+.hero h1 em { font-style: normal; color: var(--violet); }
+.hero p { font-size: 13px; color: var(--muted); font-weight: 300; line-height: 1.7; max-width: 440px; }
+#total-count {
+  display: inline-block;
+  margin-top: 14px;
+  font-size: 12px;
+  color: var(--muted);
+  border: 0.5px solid var(--border);
+  border-radius: 20px;
+  padding: 5px 14px;
+}
+#total-count strong { color: var(--violet); }
+
+/* search + sort bar */
+.controls {
+  display: flex; gap: 10px; align-items: center;
+  margin-bottom: 28px; flex-wrap: wrap;
+}
+#search {
+  flex: 1; min-width: 180px;
+  background: var(--surface); border: 0.5px solid var(--border);
+  border-radius: 10px; padding: 9px 14px;
+  color: var(--text); font-family: 'Space Grotesk', sans-serif; font-size: 13px;
+  outline: none;
+}
+#search:focus { border-color: rgba(200,173,255,0.35); }
+#search::placeholder { color: var(--muted); }
+.sort-btn {
+  background: var(--surface); border: 0.5px solid var(--border);
+  border-radius: 10px; padding: 9px 16px; color: var(--muted);
+  font-family: 'Space Grotesk', sans-serif; font-size: 12px;
+  cursor: pointer; transition: all 0.15s; white-space: nowrap;
+}
+.sort-btn.on, .sort-btn:hover {
+  background: rgba(200,173,255,0.08);
+  border-color: rgba(200,173,255,0.3);
+  color: var(--violet);
+}
+
+/* grid */
+#grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+/* card */
+.card {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s;
+  display: flex; flex-direction: column;
+}
+.card:hover {
+  border-color: rgba(200,173,255,0.35);
+  transform: translateY(-2px);
+}
+.card-img {
+  width: 100%;
+  aspect-ratio: 1;
+  background: repeating-conic-gradient(#0D0F1E 0% 25%, #111323 0% 50%) 0 0 / 12px 12px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 10px;
+}
+.card-img img { width: 100%; height: 100%; object-fit: contain; }
+.card-info {
+  padding: 10px 12px 12px;
+  border-top: 0.5px solid var(--border);
+}
+.card-name {
+  font-size: 12px; font-weight: 500; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  margin-bottom: 3px;
+}
+.card-meta { font-size: 10px; color: var(--muted); }
+
+/* status badge */
+.badge {
+  display: inline-block; font-size: 9px; letter-spacing: 0.06em;
+  text-transform: uppercase; padding: 2px 7px; border-radius: 20px;
+  margin-top: 5px; font-weight: 500;
+}
+.badge.live { background: rgba(100,255,150,0.1); color: #6fefaa; border: 0.5px solid rgba(100,255,150,0.2); }
+.badge.void { background: rgba(200,173,255,0.08); color: var(--muted); border: 0.5px solid var(--border); }
+
+/* lightbox */
+#lightbox {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(5,6,15,0.92); backdrop-filter: blur(10px);
+  display: none; align-items: center; justify-content: center; padding: 24px;
+}
+#lightbox.open { display: flex; }
+#lb-box {
+  background: var(--surface); border: 0.5px solid var(--border);
+  border-radius: 20px; padding: 28px;
+  max-width: 340px; width: 100%;
+  display: flex; flex-direction: column; align-items: center; gap: 16px;
+  text-align: center;
+}
+#lb-img-wrap {
+  width: 200px; height: 200px;
+  background: repeating-conic-gradient(#0D0F1E 0% 25%, #111323 0% 50%) 0 0 / 16px 16px;
+  border-radius: 14px; display: flex; align-items: center; justify-content: center;
+  padding: 16px; border: 0.5px solid var(--border);
+}
+#lb-img { width: 100%; height: 100%; object-fit: contain; }
+#lb-name { font-size: 18px; font-weight: 600; letter-spacing: -0.02em; }
+#lb-meta { font-size: 12px; color: var(--muted); line-height: 1.7; }
+#lb-close {
+  position: absolute; top: 20px; right: 24px;
+  background: none; border: none; color: var(--muted);
+  font-size: 24px; cursor: pointer; z-index: 101;
+}
+#lb-close:hover { color: var(--text); }
+
+/* loading + empty */
+#loading, #empty {
+  grid-column: 1/-1;
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+  padding: 60px 0;
+  line-height: 1.8;
+}
+.spinner {
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 2px solid var(--border);
+  border-top-color: var(--violet);
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 12px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* not configured banner */
+#no-config {
+  display: none;
+  background: rgba(255,179,71,0.08);
+  border: 0.5px solid rgba(255,179,71,0.25);
+  border-radius: 12px;
+  padding: 14px 18px;
+  font-size: 13px;
+  color: var(--amber);
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+@media (max-width: 500px) {
+  #grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+}
+</style>
+</head>
+<body>
+
+<canvas id="starfield"></canvas>
+
+<div class="page">
+  <header>
+    <div class="logo">
+      <div class="logo-title">Space Junk</div>
+      <div class="logo-sub">Gallery</div>
+    </div>
+    <a href="index.html" class="nav-link">← Back to Galaxy</a>
+  </header>
+
+  <div class="hero">
+    <h1>Every object<br>ever <em>launched.</em></h1>
+    <p>A permanent archive of everything strangers have sent into the void. Objects in the galaxy fade after 30 days — but here, nothing is lost.</p>
+    <div id="total-count"><strong id="count-num">—</strong> objects in the archive</div>
+  </div>
+
+  <!-- not configured warning -->
+  <div id="no-config">
+    ⚠ Firebase is not connected yet. Open <strong>firebase-config.js</strong> and paste your config to see the real gallery. Showing demo state for now.
+  </div>
+
+  <!-- controls -->
+  <div class="controls">
+    <input id="search" type="text" placeholder="Search by name…">
+    <button class="sort-btn on" data-sort="newest">Newest first</button>
+    <button class="sort-btn" data-sort="oldest">Oldest first</button>
+    <button class="sort-btn" data-sort="named">Named only</button>
+  </div>
+
+  <!-- grid -->
+  <div id="grid">
+    <div id="loading">
+      <div class="spinner"></div>
+      Fetching objects from the void…
+    </div>
+  </div>
+</div>
+
+<!-- lightbox -->
+<div id="lightbox">
+  <button id="lb-close">×</button>
+  <div id="lb-box">
+    <div id="lb-img-wrap"><img id="lb-img" src="" alt=""></div>
+    <div id="lb-name"></div>
+    <div id="lb-meta"></div>
+  </div>
+</div>
+
+<script src="firebase-config.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-database-compat.min.js"></script>
+<script>
+// ── STARFIELD ──
+const sc = document.getElementById('starfield');
+const sx = sc.getContext('2d');
+let stars = [];
+function initStars() {
+  sc.width = innerWidth; sc.height = innerHeight;
+  stars = Array.from({length: Math.floor(innerWidth * innerHeight / 3200)}, () => ({
+    x: Math.random()*innerWidth, y: Math.random()*innerHeight,
+    r: Math.random()*1.1+0.2, a: Math.random()*0.55+0.1,
+    sp: Math.random()*0.015+0.004, off: Math.random()*Math.PI*2
+  }));
+}
+let t = 0;
+function drawStars() {
+  sx.clearRect(0,0,sc.width,sc.height); t+=0.016;
+  for (const s of stars) {
+    const a = s.a*(0.5+0.5*Math.sin(t*s.sp*60+s.off));
+    sx.beginPath(); sx.arc(s.x,s.y,s.r,0,Math.PI*2);
+    sx.fillStyle=`rgba(255,255,255,${a})`; sx.fill();
+  }
+  requestAnimationFrame(drawStars);
+}
+initStars(); drawStars();
+window.addEventListener('resize', initStars);
+
+// ── FIREBASE ──
+const CONFIGURED = typeof FIREBASE_CONFIG !== 'undefined' && FIREBASE_CONFIG.apiKey !== 'PASTE_YOUR_API_KEY_HERE';
+let db = null;
+
+if (!CONFIGURED) {
+  document.getElementById('no-config').style.display = 'block';
+  document.getElementById('loading').innerHTML = '<div style="color:var(--muted)">Connect Firebase to see the real archive.</div>';
+  document.getElementById('count-num').textContent = '0';
+} else {
+  if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+  db = firebase.database();
+  loadGallery();
+}
+
+// ── DATA ──
+const LIFETIME_MS = 30 * 24 * 60 * 60 * 1000;
+let allItems = [];
+let sortMode = 'newest';
+let searchQuery = '';
+
+function loadGallery() {
+  // Pull from gallery node (permanent, never deleted)
+  db.ref('gallery').orderByChild('createdAt').on('value', snap => {
+    allItems = [];
+    snap.forEach(child => {
+      allItems.push({ id: child.key, ...child.val() });
+    });
+    // also listen to active objects node to catch any not yet in gallery
+    document.getElementById('count-num').textContent = allItems.length;
+    render();
+  });
+}
+
+function isLive(item) {
+  return (Date.now() - item.createdAt) < LIFETIME_MS;
+}
+
+function timeAgo(ms) {
+  const m=Math.floor(ms/60000), h=Math.floor(ms/3600000), d=Math.floor(ms/86400000);
+  if (m<1) return 'just now';
+  if (m<60) return `${m} min ago`;
+  if (h<24) return `${h}h ago`;
+  if (d<30) return `${d} days ago`;
+  return `${Math.floor(d/30)} months ago`;
+}
+
+function daysLeft(createdAt) {
+  return Math.max(0, Math.ceil((LIFETIME_MS-(Date.now()-createdAt))/86400000));
+}
+
+// ── RENDER ──
+function render() {
+  let items = [...allItems];
+
+  // search filter
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    items = items.filter(i => (i.name||'').toLowerCase().includes(q));
+  }
+
+  // sort
+  if (sortMode==='newest') items.sort((a,b)=>b.createdAt-a.createdAt);
+  if (sortMode==='oldest') items.sort((a,b)=>a.createdAt-b.createdAt);
+  if (sortMode==='named') {
+    items = items.filter(i=>i.name);
+    items.sort((a,b)=>b.createdAt-a.createdAt);
+  }
+
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+
+  if (items.length === 0) {
+    grid.innerHTML = `<div id="empty">
+      ${searchQuery ? 'No objects match your search.' : 'No objects yet. Be the first to <a href="index.html" style="color:var(--violet)">launch something</a>.'}
+    </div>`;
+    return;
+  }
+
+  items.forEach(item => {
+    const live = isLive(item);
+    const ago = timeAgo(Date.now()-item.createdAt);
+    const left = daysLeft(item.createdAt);
+
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="card-img"><img src="${item.imageData}" alt="${item.name||'Space object'}"></div>
+      <div class="card-info">
+        <div class="card-name">${item.name || '<span style="color:var(--muted);font-style:italic">unnamed</span>'}</div>
+        <div class="card-meta">${ago}</div>
+        <div class="badge ${live?'live':'void'}">${live ? `${left}d left` : 'lost to void'}</div>
+      </div>
+    `;
+    card.onclick = () => openLightbox(item);
+    grid.appendChild(card);
+  });
+}
+
+// ── LIGHTBOX ──
+function openLightbox(item) {
+  const live = isLive(item);
+  const ago = timeAgo(Date.now()-item.createdAt);
+  const left = daysLeft(item.createdAt);
+
+  document.getElementById('lb-img').src = item.imageData;
+  document.getElementById('lb-name').textContent = item.name || 'Unnamed Object';
+  document.getElementById('lb-meta').innerHTML = `
+    Launched ${ago}<br>
+    ${live
+      ? `<span style="color:#6fefaa">Still drifting · ${left} days left</span>`
+      : `<span style="color:var(--muted)">Lost to the void</span>`
+    }
+  `;
+  document.getElementById('lightbox').classList.add('open');
+}
+
+document.getElementById('lb-close').onclick = () => document.getElementById('lightbox').classList.remove('open');
+document.getElementById('lightbox').onclick = e => {
+  if (e.target===document.getElementById('lightbox')) document.getElementById('lightbox').classList.remove('open');
+};
+
+// ── CONTROLS ──
+document.getElementById('search').oninput = e => {
+  searchQuery = e.target.value.trim();
+  render();
+};
+
+document.querySelectorAll('.sort-btn').forEach(btn => {
+  btn.onclick = () => {
+    sortMode = btn.dataset.sort;
+    document.querySelectorAll('.sort-btn').forEach(b=>b.classList.remove('on'));
+    btn.classList.add('on');
+    render();
+  };
+});
+</script>
+</body>
+</html>

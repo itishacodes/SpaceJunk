@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Space Junk — A galaxy made by strangers</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #05060F;
+  --surface: #0D0F1E;
+  --surface2: #131629;
+  --violet: #C8ADFF;
+  --amber: #FFB347;
+  --text: #E8E6F0;
+  --muted: #6B6880;
+  --border: rgba(200,173,255,0.15);
+}
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Space Grotesk', sans-serif; overflow: hidden; }
+
+/* starfield */
+#starfield { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+
+/* floating objects live here */
+#galaxy { position: fixed; inset: 0; z-index: 1; }
+
+/* tooltip */
+#tooltip {
+  position: fixed; z-index: 200; display: none; pointer-events: none;
+  background: var(--surface2); border: 0.5px solid var(--border);
+  border-radius: 10px; padding: 8px 12px; font-size: 12px;
+  line-height: 1.5; max-width: 180px; text-align: center;
+}
+#tooltip .t-name { font-weight: 500; color: var(--violet); font-size: 13px; }
+#tooltip .t-meta { color: var(--muted); font-size: 11px; margin-top: 2px; }
+
+/* ui overlay */
+#ui { position: fixed; inset: 0; z-index: 10; pointer-events: none; display: flex; flex-direction: column; }
+
+header {
+  pointer-events: all; padding: 22px 28px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.logo-title { font-size: 17px; font-weight: 600; letter-spacing: -0.02em; }
+.logo-sub { font-size: 10px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-top: 2px; }
+
+.header-right { display: flex; align-items: center; gap: 16px; }
+#counter { font-size: 12px; color: var(--muted); text-align: right; }
+#counter strong { display: block; font-size: 20px; font-weight: 600; color: var(--violet); line-height: 1; }
+
+.nav-link {
+  font-size: 12px; color: var(--muted); text-decoration: none;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  border: 0.5px solid var(--border); border-radius: 20px;
+  padding: 6px 14px; transition: all 0.15s; pointer-events: all;
+}
+.nav-link:hover { color: var(--text); border-color: rgba(200,173,255,0.3); }
+
+/* bottom launch button */
+#bottom { pointer-events: all; margin-top: auto; padding: 0 0 28px; display: flex; justify-content: center; }
+#launch-btn {
+  background: rgba(200,173,255,0.07); border: 0.5px solid rgba(200,173,255,0.25);
+  border-radius: 40px; padding: 13px 30px; color: var(--violet);
+  font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 500;
+  cursor: pointer; letter-spacing: 0.02em; display: flex; align-items: center; gap: 10px;
+  transition: all 0.2s;
+}
+#launch-btn:hover { background: rgba(200,173,255,0.13); border-color: rgba(200,173,255,0.4); }
+.pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--amber); animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.75)} }
+
+/* intro text */
+#intro {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  text-align: center; z-index: 5; pointer-events: none;
+  transition: opacity 1.2s ease;
+}
+#intro.gone { opacity: 0; }
+#intro h1 { font-size: clamp(26px,5vw,50px); font-weight: 600; letter-spacing: -0.03em; line-height: 1.1; }
+#intro h1 em { font-style: normal; color: var(--violet); }
+#intro p { font-size: 13px; color: var(--muted); margin-top: 10px; font-weight: 300; }
+
+/* modal */
+#modal-overlay {
+  position: fixed; inset: 0; z-index: 50; display: none;
+  align-items: center; justify-content: center; padding: 20px;
+  background: rgba(5,6,15,0.82); backdrop-filter: blur(8px);
+}
+#modal-overlay.open { display: flex; }
+#modal {
+  background: var(--surface); border: 0.5px solid var(--border);
+  border-radius: 20px; padding: 26px; width: 100%; max-width: 400px;
+  display: flex; flex-direction: column; gap: 16px;
+}
+.m-header { display: flex; justify-content: space-between; align-items: flex-start; }
+.m-title { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+.m-sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
+#close-btn { background: none; border: none; color: var(--muted); font-size: 22px; cursor: pointer; line-height: 1; padding: 0; }
+#close-btn:hover { color: var(--text); }
+
+/* tools */
+.tool-row { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.tbtn {
+  background: var(--surface2); border: 0.5px solid var(--border); border-radius: 8px;
+  padding: 6px 13px; color: var(--muted); font-family: 'Space Grotesk', sans-serif;
+  font-size: 12px; cursor: pointer; transition: all 0.15s;
+}
+.tbtn.on, .tbtn:hover { background: rgba(200,173,255,0.1); border-color: rgba(200,173,255,0.3); color: var(--violet); }
+.sz {
+  width: 26px; height: 26px; border-radius: 6px; background: var(--surface2);
+  border: 0.5px solid var(--border); display: flex; align-items: center;
+  justify-content: center; cursor: pointer; transition: all 0.15s;
+}
+.sz.on, .sz:hover { background: rgba(200,173,255,0.1); border-color: rgba(200,173,255,0.3); }
+.szdot { border-radius: 50%; background: var(--text); }
+.cdot {
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 2px solid transparent; cursor: pointer; transition: transform 0.15s; flex-shrink: 0;
+}
+.cdot:hover { transform: scale(1.15); }
+.cdot.on { border-color: #fff; transform: scale(1.1); }
+
+/* canvas */
+#draw-canvas {
+  display: block; width: 100%; border-radius: 12px;
+  border: 0.5px solid var(--border); cursor: crosshair;
+  touch-action: none;
+  background: repeating-conic-gradient(#0D0F1E 0% 25%, #111323 0% 50%) 0 0 / 14px 14px;
+}
+.canvas-hint { font-size: 11px; color: var(--muted); text-align: center; margin-top: -8px; }
+
+/* name input */
+.label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px; }
+#obj-name {
+  width: 100%; background: var(--surface2); border: 0.5px solid var(--border);
+  border-radius: 10px; padding: 10px 13px; color: var(--text);
+  font-family: 'Space Grotesk', sans-serif; font-size: 13px; outline: none;
+}
+#obj-name:focus { border-color: rgba(200,173,255,0.4); }
+#obj-name::placeholder { color: var(--muted); }
+
+/* submit */
+#submit-btn {
+  width: 100%; padding: 13px; border-radius: 12px;
+  background: rgba(200,173,255,0.1); border: 0.5px solid rgba(200,173,255,0.3);
+  color: var(--violet); font-family: 'Space Grotesk', sans-serif;
+  font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s;
+}
+#submit-btn:hover { background: rgba(200,173,255,0.18); }
+#submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* success */
+#success { display: none; flex-direction: column; align-items: center; gap: 10px; text-align: center; padding: 10px 0; }
+.s-icon { font-size: 44px; animation: floatup 0.5s ease; }
+@keyframes floatup { from{transform:translateY(14px) scale(0.8);opacity:0} to{transform:none;opacity:1} }
+.s-title { font-size: 16px; font-weight: 600; color: var(--violet); }
+.s-body { font-size: 13px; color: var(--muted); line-height: 1.6; max-width: 260px; }
+.s-body span { color: var(--amber); font-weight: 500; }
+</style>
+</head>
+<body>
+
+<canvas id="starfield"></canvas>
+<div id="galaxy"></div>
+
+<div id="tooltip">
+  <div class="t-name" id="t-name"></div>
+  <div class="t-meta" id="t-meta"></div>
+</div>
+
+<div id="intro">
+  <h1>A galaxy made<br>by <em>strangers.</em></h1>
+  <p>Draw your object. It drifts here for 30 days.</p>
+</div>
+
+<div id="ui">
+  <header>
+    <div>
+      <div class="logo-title">Space Junk</div>
+      <div class="logo-sub">Community Galaxy</div>
+    </div>
+    <div class="header-right">
+      <a href="gallery.html" class="nav-link">✦ Gallery</a>
+      <div id="counter"><strong id="cnt">0</strong>drifting</div>
+    </div>
+  </header>
+  <div id="bottom">
+    <button id="launch-btn"><span class="pulse"></span>Add yours to the galaxy</button>
+  </div>
+</div>
+
+<!-- Modal -->
+<div id="modal-overlay">
+  <div id="modal">
+
+    <div class="m-header">
+      <div>
+        <div class="m-title">What are you sending up?</div>
+        <div class="m-sub">Draw anything — use bright colors.</div>
+      </div>
+      <button id="close-btn">×</button>
+    </div>
+
+    <div id="draw-form" style="display:flex;flex-direction:column;gap:14px;">
+
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div class="tool-row">
+          <button class="tbtn on" id="t-draw">Draw</button>
+          <button class="tbtn" id="t-erase">Erase</button>
+          <button class="tbtn" id="t-clear">Clear</button>
+          <div style="margin-left:auto;display:flex;gap:5px;">
+            <div class="sz on" data-size="3"><div class="szdot" style="width:4px;height:4px;"></div></div>
+            <div class="sz" data-size="8"><div class="szdot" style="width:9px;height:9px;"></div></div>
+            <div class="sz" data-size="16"><div class="szdot" style="width:14px;height:14px;"></div></div>
+          </div>
+        </div>
+        <div class="tool-row" id="colors"></div>
+      </div>
+
+      <canvas id="draw-canvas" width="360" height="240"></canvas>
+      <div class="canvas-hint">Use bright colors — dark ones vanish in space ✦</div>
+
+      <div>
+        <div class="label">Name your object (optional)</div>
+        <input id="obj-name" type="text" placeholder="e.g. Planet Kota, USS Wanderer…" maxlength="40">
+      </div>
+
+      <button id="submit-btn">Launch into the galaxy →</button>
+    </div>
+
+    <div id="success">
+      <div class="s-icon">🛸</div>
+      <div class="s-title">It's out there now.</div>
+      <div class="s-body">Your object is drifting through the galaxy. It'll float here for <span>30 days</span>, then fade into the void. <br><br>Visit the <a href="gallery.html" style="color:var(--violet)">gallery</a> to see every object ever made.</div>
+    </div>
+
+  </div>
+</div>
+
+<script src="firebase-config.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-database-compat.min.js"></script>
+<script>
+// ── INIT ──
+const CONFIGURED = typeof FIREBASE_CONFIG !== 'undefined' && FIREBASE_CONFIG.apiKey !== 'PASTE_YOUR_API_KEY_HERE';
+let db = null;
+if (CONFIGURED) {
+  firebase.initializeApp(FIREBASE_CONFIG);
+  db = firebase.database();
+}
+
+const LIFETIME_MS = 30 * 24 * 60 * 60 * 1000;
+const MAX_VISIBLE = 200;
+
+// ── STARFIELD ──
+const sc = document.getElementById('starfield');
+const sx = sc.getContext('2d');
+let stars = [];
+function initStars() {
+  sc.width = innerWidth; sc.height = innerHeight;
+  stars = Array.from({length: Math.floor(innerWidth * innerHeight / 2800)}, () => ({
+    x: Math.random() * innerWidth,
+    y: Math.random() * innerHeight,
+    r: Math.random() * 1.1 + 0.2,
+    a: Math.random() * 0.6 + 0.1,
+    sp: Math.random() * 0.015 + 0.004,
+    off: Math.random() * Math.PI * 2
+  }));
+}
+let st = 0;
+function drawStars() {
+  sx.clearRect(0,0,sc.width,sc.height);
+  st += 0.016;
+  for (const s of stars) {
+    const a = s.a * (0.55 + 0.45 * Math.sin(st * s.sp * 60 + s.off));
+    sx.beginPath(); sx.arc(s.x,s.y,s.r,0,Math.PI*2);
+    sx.fillStyle = `rgba(255,255,255,${a})`; sx.fill();
+  }
+  requestAnimationFrame(drawStars);
+}
+initStars(); drawStars();
+window.addEventListener('resize', initStars);
+
+// ── FLOATING OBJECTS ──
+const galaxy = document.getElementById('galaxy');
+const tooltip = document.getElementById('tooltip');
+let objects = {};
+let W = innerWidth, H = innerHeight;
+window.addEventListener('resize', () => { W = innerWidth; H = innerHeight; });
+
+function seeded(id, n) {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = Math.imul(31,h) + id.charCodeAt(i) | 0;
+  return Array.from({length:n}, () => { h^=h<<13;h^=h>>17;h^=h<<5; return (h>>>0)/4294967296; });
+}
+
+function ageStr(ms) {
+  const m=Math.floor(ms/60000), hr=Math.floor(ms/3600000), d=Math.floor(ms/86400000);
+  if (m<1) return 'just arrived';
+  if (m<60) return `${m}m ago`;
+  if (hr<24) return `${hr}h ago`;
+  return `${d}d ago`;
+}
+
+function addObject(id, data) {
+  if (objects[id]) return;
+  const age = Date.now() - data.createdAt;
+  if (age > LIFETIME_MS) return;
+
+  const [rx,ry,ra,rs] = seeded(id, 4);
+  const frac = age / LIFETIME_MS;
+  const size = Math.max(30, 90 - frac * 55);
+  const opacity = Math.max(0.06, 1 - frac * 0.88);
+  const speed = 0.1 + frac * 0.2;
+  const angle = ra * Math.PI * 2;
+  const spin = (rs - 0.5) * 0.25;
+
+  const el = document.createElement('img');
+  el.src = data.imageData;
+  el.style.cssText = `
+    position:absolute;
+    width:${size}px; height:${size}px;
+    opacity:${opacity};
+    cursor:pointer;
+    pointer-events:all;
+    will-change:transform;
+    transition:opacity 0.4s;
+  `;
+
+  // tooltip
+  el.addEventListener('mouseenter', e => {
+    document.getElementById('t-name').textContent = data.name || 'Unknown Object';
+    const dLeft = Math.max(0, Math.ceil((LIFETIME_MS - (Date.now()-data.createdAt))/86400000));
+    document.getElementById('t-meta').textContent = `${ageStr(Date.now()-data.createdAt)} · ${dLeft}d left`;
+    tooltip.style.display = 'block';
+  });
+  el.addEventListener('mousemove', e => {
+    tooltip.style.left = (e.clientX+16)+'px';
+    tooltip.style.top = (e.clientY-44)+'px';
+  });
+  el.addEventListener('mouseleave', () => tooltip.style.display = 'none');
+
+  galaxy.appendChild(el);
+
+  objects[id] = {
+    el, data,
+    x: rx*(W-size), y: ry*(H-size),
+    vx: Math.cos(angle)*speed, vy: Math.sin(angle)*speed,
+    rot: 0, spin
+  };
+
+  updateCount();
+  if (Object.keys(objects).length > 0) document.getElementById('intro').classList.add('gone');
+}
+
+function removeObject(id) {
+  if (!objects[id]) return;
+  objects[id].el.style.opacity = '0';
+  setTimeout(() => objects[id]?.el.remove(), 500);
+  delete objects[id];
+  updateCount();
+}
+
+function updateCount() {
+  document.getElementById('cnt').textContent = Object.keys(objects).length;
+}
+
+// animation loop
+function animate() {
+  for (const id in objects) {
+    const o = objects[id];
+    o.x += o.vx; o.y += o.vy;
+    const sz = parseFloat(o.el.style.width);
+    if (o.x < 0 || o.x + sz > W) { o.vx *= -1; o.x = Math.max(0, Math.min(W-sz, o.x)); }
+    if (o.y < 0 || o.y + sz > H) { o.vy *= -1; o.y = Math.max(0, Math.min(H-sz, o.y)); }
+    o.rot += o.spin;
+    o.el.style.transform = `translate(${o.x}px,${o.y}px) rotate(${o.rot}deg)`;
+    if (Date.now() - o.data.createdAt > LIFETIME_MS) removeObject(id);
+  }
+  requestAnimationFrame(animate);
+}
+animate();
+
+// ── FIREBASE SYNC ──
+function startSync() {
+  const ref = db.ref('objects').orderByChild('createdAt').limitToLast(MAX_VISIBLE);
+  ref.on('child_added', snap => addObject(snap.key, snap.val()));
+  ref.on('child_removed', snap => removeObject(snap.key));
+}
+if (CONFIGURED) startSync();
+
+// ── DRAWING TOOL ──
+const canvas = document.getElementById('draw-canvas');
+const ctx = canvas.getContext('2d');
+
+const PALETTE = ['#FFFFFF','#C8ADFF','#FFB347','#7FFFD4','#FF6B9D','#90EE90','#FF8C69','#87CEEB','#FFD700','#FF69B4'];
+let tool = 'draw', color = '#FFFFFF', brushSize = 3, painting = false, lx = 0, ly = 0;
+
+// color swatches
+const colorRow = document.getElementById('colors');
+PALETTE.forEach(c => {
+  const d = document.createElement('div');
+  d.className = 'cdot' + (c===color?' on':'');
+  d.style.background = c;
+  d.onclick = () => {
+    color = c; tool = 'draw';
+    document.querySelectorAll('.cdot').forEach(x=>x.classList.remove('on'));
+    d.classList.add('on');
+    document.getElementById('t-draw').classList.add('on');
+    document.getElementById('t-erase').classList.remove('on');
+  };
+  colorRow.appendChild(d);
+});
+
+// tool buttons
+document.getElementById('t-draw').onclick = () => {
+  tool='draw';
+  document.getElementById('t-draw').classList.add('on');
+  document.getElementById('t-erase').classList.remove('on');
+};
+document.getElementById('t-erase').onclick = () => {
+  tool='erase';
+  document.getElementById('t-erase').classList.add('on');
+  document.getElementById('t-draw').classList.remove('on');
+};
+document.getElementById('t-clear').onclick = () => ctx.clearRect(0,0,canvas.width,canvas.height);
+
+// size buttons
+document.querySelectorAll('.sz').forEach(btn => {
+  btn.onclick = () => {
+    brushSize = parseInt(btn.dataset.size);
+    document.querySelectorAll('.sz').forEach(b=>b.classList.remove('on'));
+    btn.classList.add('on');
+  };
+});
+
+function pos(e) {
+  const r = canvas.getBoundingClientRect();
+  const sx = canvas.width/r.width, sy = canvas.height/r.height;
+  const cx = e.touches ? e.touches[0].clientX : e.clientX;
+  const cy = e.touches ? e.touches[0].clientY : e.clientY;
+  return { x:(cx-r.left)*sx, y:(cy-r.top)*sy };
+}
+
+canvas.onmousedown = e => { painting=true; const p=pos(e); lx=p.x; ly=p.y; };
+canvas.onmousemove = e => {
+  if (!painting) return;
+  const p = pos(e);
+  ctx.beginPath(); ctx.moveTo(lx,ly); ctx.lineTo(p.x,p.y);
+  ctx.strokeStyle = tool==='erase' ? 'rgba(0,0,0,1)' : color;
+  if (tool==='erase') { ctx.globalCompositeOperation='destination-out'; }
+  else { ctx.globalCompositeOperation='source-over'; }
+  ctx.lineWidth=brushSize; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.stroke();
+  lx=p.x; ly=p.y;
+};
+canvas.onmouseup = canvas.onmouseleave = () => painting=false;
+canvas.ontouchstart = e => { e.preventDefault(); painting=true; const p=pos(e); lx=p.x; ly=p.y; };
+canvas.ontouchmove = e => { e.preventDefault(); if(!painting)return; const p=pos(e);
+  ctx.beginPath(); ctx.moveTo(lx,ly); ctx.lineTo(p.x,p.y);
+  ctx.strokeStyle = tool==='erase' ? 'rgba(0,0,0,1)' : color;
+  ctx.globalCompositeOperation = tool==='erase' ? 'destination-out' : 'source-over';
+  ctx.lineWidth=brushSize; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.stroke();
+  lx=p.x; ly=p.y;
+};
+canvas.ontouchend = () => painting=false;
+
+// ── SUBMIT ──
+document.getElementById('submit-btn').onclick = async () => {
+  const btn = document.getElementById('submit-btn');
+
+  // compress — transparent PNG
+  const small = document.createElement('canvas');
+  small.width = 120; small.height = 80;
+  const sc2 = small.getContext('2d');
+  sc2.clearRect(0,0,120,80);
+  sc2.drawImage(canvas,0,0,120,80);
+  const imageData = small.toDataURL('image/png');
+
+  const name = document.getElementById('obj-name').value.trim() || null;
+  const payload = { imageData, name, createdAt: Date.now() };
+
+  btn.disabled = true;
+  btn.textContent = 'Launching…';
+
+  if (!CONFIGURED) {
+    // demo: just show it locally
+    addObject('local_'+Date.now(), payload);
+    showSuccess();
+    return;
+  }
+
+  try {
+    // save to Firebase — this makes it visible to EVERYONE
+    await db.ref('objects').push(payload);
+    // also save to gallery (permanent archive, never deleted)
+    await db.ref('gallery').push(payload);
+    showSuccess();
+  } catch(err) {
+    btn.disabled = false;
+    btn.textContent = 'Launch into the galaxy →';
+    alert('Could not save. Check your Firebase config in firebase-config.js');
+  }
+};
+
+function showSuccess() {
+  document.getElementById('draw-form').style.display = 'none';
+  document.getElementById('success').style.display = 'flex';
+}
+
+// ── MODAL ──
+function openModal() {
+  document.getElementById('draw-form').style.display = 'flex';
+  document.getElementById('success').style.display = 'none';
+  document.getElementById('submit-btn').disabled = false;
+  document.getElementById('submit-btn').textContent = 'Launch into the galaxy →';
+  document.getElementById('obj-name').value = '';
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
+
+document.getElementById('launch-btn').onclick = openModal;
+document.getElementById('close-btn').onclick = closeModal;
+document.getElementById('modal-overlay').onclick = e => { if(e.target===document.getElementById('modal-overlay')) closeModal(); };
+</script>
+</body>
+</html>
